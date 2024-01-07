@@ -1,0 +1,43 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+      
+      - name: Compress Files
+        run: zip --symlinks -r my-api.zip .
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{vars.AWS_ACCESS_KEY_ID}}
+          aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          aws-region: ${{vars.AWS_REGION}}
+      
+      - name: Install Elastic Beanstalk CLI
+        run: |
+          sudo apt-get install -y python3-pip
+          pip3 install awsebcli --upgrade --user
+          echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc
+          source $HOME/.bashrc
+      
+      - name: Init Elastic Beanstalk
+        run: echo "n" | eb init my-api --region ${{vars.AWS_REGION}}
+      
+      - name: Deploy to Elastic Beanstalk
+        run: eb deploy test --staged --label test-my-api-${{github.event.repository.pushed_at}}
