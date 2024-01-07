@@ -1,0 +1,2 @@
+deploy:
+  artifact: my-api.zip
